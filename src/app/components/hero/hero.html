@@ -1,18 +1,29 @@
-<!-- HERO -->
-<section id="home" class="pt-28 pb-24 text-center">
-    <div class="max-w-5xl mx-auto px-6">
-        <h1 class="text-5xl md:text-7xl font-black mb-8">
-            Asistente IA<br>
-            <span class="text-3xl md:text-5xl text-white/90">Multimodal Empresarial</span>
-        </h1>
+<section class="hero">
+  <div class="container" style="display: flex; align-items: center; justify-content: space-between; gap: 40px; flex-wrap: wrap; padding: 40px 20px;">
+    
+    <!-- Mitad izquierda: contenido -->
+    <div class="hero-content" style="flex: 1; min-width: 300px;">
+      <h1 style="font-size: 2.5rem; line-height: 1.2;">
+        Asistente IA<br>
+        <span style="color:#4F46E5; font-weight: 600;">Multimodal Empresarial</span>
+      </h1>
 
-        <p class="text-xl md:text-2xl text-white/80 mb-10">
-            Procesa texto, imágenes y audio simultáneamente.
-            Lleva tu empresa al siguiente nivel con IA avanzada.
-        </p>
+      <p style="margin: 20px 0; font-size: 1rem; color:#6B6860;">
+        Procesa texto, imágenes y audio simultáneamente.<br>
+        Lleva tu empresa al siguiente nivel con IA avanzada.
+      </p>
 
-        <button class="bg-white text-blue-700 font-bold px-10 py-4 rounded-2xl shadow-xl hover:scale-105 transition">
-            Probar Ahora
+      <a routerLink="/chatAsistente">
+        <button style="padding: 12px 24px; background:#4F46E5; color:white; border:none; border-radius:12px; cursor:pointer; font-weight:500; transition: background 0.2s;">
+          Probar Ahora
         </button>
+      </a>
     </div>
+
+    <!-- Mitad derecha: espacio para imagen -->
+    <div class="hero-image" style="flex: 1; min-width: 300px; display:flex; justify-content:center; align-items:center;">
+      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSHRWabz4UxIhWuVnKirKePU17rre2lioZjxQ&s" alt="Imagen Asistente IA" style="max-width:100%; border-radius:12px;">
+    </div>
+
+  </div>
 </section>

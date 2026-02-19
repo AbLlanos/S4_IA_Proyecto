@@ -1,0 +1,63 @@
+<!-- faq.component.html (ng g c faq --skip-tests) -->
+<section id="faq" style="background-color:#0f1116; color:#fff; padding:6rem 1.5rem;">
+    <div style="max-width:800px; margin:0 auto;">
+        <!-- Título -->
+        <div class="text-center mb-12">
+            <h2 style="font-size:2.5rem; font-weight:700; color:#00cfff; margin-bottom:0.5rem;">Preguntas Frecuentes</h2>
+            <p style="font-size:1.1rem; color:#ccc;">Resolvemos las dudas más comunes sobre nuestro asistente multimodal empresarial.</p>
+        </div>
+
+        <!-- Lista de preguntas -->
+        <div class="faq-list" style="display:flex; flex-direction:column; gap:1rem;">
+
+            <!-- Pregunta 1 -->
+            <div class="faq-item" style="border-bottom:1px solid rgba(255,255,255,0.2);">
+                <button class="faq-question" (click)="toggle(0)"
+                    style="width:100%; text-align:left; padding:1rem; font-size:1.2rem; font-weight:600; color:#fff; background:none; border:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                    ¿Qué tipo de archivos puedo subir?
+                    <span class="arrow" [style.transform]="openStates[0] ? 'rotate(180deg)' : 'rotate(0deg)'" style="transition: transform 0.3s ease-in-out;">▼</span>
+                </button>
+                <div class="faq-answer" [style.display]="openStates[0] ? 'block' : 'none'" style="padding:0 1rem 1rem 1rem; color:#ccc;">
+                    Puedes subir imágenes (JPG, PNG), documentos de texto (PDF, DOCX) y archivos de audio (MP3, WAV).
+                </div>
+            </div>
+
+            <!-- Pregunta 2 -->
+            <div class="faq-item" style="border-bottom:1px solid rgba(255,255,255,0.2);">
+                <button class="faq-question" (click)="toggle(1)"
+                    style="width:100%; text-align:left; padding:1rem; font-size:1.2rem; font-weight:600; color:#fff; background:none; border:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                    ¿El asistente funciona en la nube?
+                    <span class="arrow" [style.transform]="openStates[1] ? 'rotate(180deg)' : 'rotate(0deg)'" style="transition: transform 0.3s ease-in-out;">▼</span>
+                </button>
+                <div class="faq-answer" [style.display]="openStates[1] ? 'block' : 'none'" style="padding:0 1rem 1rem 1rem; color:#ccc;">
+                    Sí, todo el procesamiento se realiza en la nube con seguridad empresarial garantizada.
+                </div>
+            </div>
+
+            <!-- Pregunta 3 -->
+            <div class="faq-item" style="border-bottom:1px solid rgba(255,255,255,0.2);">
+                <button class="faq-question" (click)="toggle(2)"
+                    style="width:100%; text-align:left; padding:1rem; font-size:1.2rem; font-weight:600; color:#fff; background:none; border:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                    ¿Puedo integrarlo con mi ERP o CRM?
+                    <span class="arrow" [style.transform]="openStates[2] ? 'rotate(180deg)' : 'rotate(0deg)'" style="transition: transform 0.3s ease-in-out;">▼</span>
+                </button>
+                <div class="faq-answer" [style.display]="openStates[2] ? 'block' : 'none'" style="padding:0 1rem 1rem 1rem; color:#ccc;">
+                    Sí, permite integraciones con sistemas ERP y CRM existentes mediante API.
+                </div>
+            </div>
+
+            <!-- Pregunta 4 -->
+            <div class="faq-item" style="border-bottom:1px solid rgba(255,255,255,0.2);">
+                <button class="faq-question" (click)="toggle(3)"
+                    style="width:100%; text-align:left; padding:1rem; font-size:1.2rem; font-weight:600; color:#fff; background:none; border:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                    ¿Cuánto tiempo tarda en procesar documentos?
+                    <span class="arrow" [style.transform]="openStates[3] ? 'rotate(180deg)' : 'rotate(0deg)'" style="transition: transform 0.3s ease-in-out;">▼</span>
+                </button>
+                <div class="faq-answer" [style.display]="openStates[3] ? 'block' : 'none'" style="padding:0 1rem 1rem 1rem; color:#ccc;">
+                    Normalmente en segundos, dependiendo del tamaño y tipo de archivo.
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>

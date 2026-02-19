@@ -1,0 +1,44 @@
+.hero {
+  padding: 7rem 1.5rem 6rem; /* pt-28 pb-24 en Tailwind */
+  text-align: center;
+  background-color: #1c1f26; /* fondo oscuro, antes salía blanco */
+  color: #ffffff; /* color de texto */
+
+  .container {
+    max-width: 50rem;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 3rem; /* text-5xl */
+    font-weight: 900; /* font-black */
+    margin-bottom: 2rem;
+
+    span {
+      display: block;
+      font-size: 1.75rem; /* text-3xl */
+      color: rgba(255, 255, 255, 0.9); /* text-white/90 */
+    }
+  }
+
+  p {
+    font-size: 1.25rem; /* text-xl */
+    margin-bottom: 2.5rem;
+    color: rgba(255, 255, 255, 0.8); /* text-white/80 */
+  }
+
+  button {
+    background-color: #ffffff;
+    color: #1d4ed8; /* text-blue-700 */
+    font-weight: bold;
+    padding: 1rem 2.5rem; /* px-10 py-4 */
+    border-radius: 1rem; /* rounded-2xl */
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3); /* shadow-xl */
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: scale(1.05); /* hover:scale-105 */
+    }
+  }
+}
