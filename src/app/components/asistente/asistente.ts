@@ -3,14 +3,9 @@ import { Route, Router, RouterLink, RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-asistente',
-  imports: [],
+  imports: [RouterLink],
   templateUrl: './asistente.html',
   styleUrl: './asistente.css',
 })
 export class Asistente {
-  constructor (private route : Router) {}
-
-  iraBot(): void{
-this.route.navigate(["/"])
-  }
 }
