@@ -1,28 +1,65 @@
 <section class="hero">
-  <div class="container" style="display: flex; align-items: center; justify-content: space-between; gap: 40px; flex-wrap: wrap; padding: 40px 20px;">
-    
-    <!-- Mitad izquierda: contenido -->
-    <div class="hero-content" style="flex: 1; min-width: 300px;">
-      <h1 style="font-size: 2.5rem; line-height: 1.2;">
-        Asistente IA<br>
-        <span style="color:#4F46E5; font-weight: 600;">Multimodal Empresarial</span>
+  <div class="hero-container">
+
+    <div class="hero-content">
+      <span class="hero-badge">IA · Multimodal · Empresarial</span>
+
+      <h1 class="hero-title">
+        Asistente IA
+        <span>Multimodal Empresarial</span>
       </h1>
 
-      <p style="margin: 20px 0; font-size: 1rem; color:#6B6860;">
-        Procesa texto, imágenes y audio simultáneamente.<br>
-        Lleva tu empresa al siguiente nivel con IA avanzada.
+      <p class="hero-subtitle">
+        Procesa texto, imágenes y audio en un solo lugar.
+        Mejora la productividad, automatiza tareas y toma decisiones más rápido.
       </p>
 
-      <a routerLink="/chatAsistente">
-        <button style="padding: 12px 24px; background:#4F46E5; color:white; border:none; border-radius:12px; cursor:pointer; font-weight:500; transition: background 0.2s;">
-          Probar Ahora
-        </button>
-      </a>
+      <div class="hero-actions">
+        <a routerLink="/chatAsistente" class="btn btn-primary">Probar ahora</a>
+        <a routerLink="/servicios" class="btn btn-secondary">Ver funciones</a>
+      </div>
+
+      <div class="hero-features">
+        <div class="feature-card">
+          <p class="feature-title"> 🤖 Respuestas rápidas</p>
+          <p class="feature-text">Ahorra tiempo en tareas repetitivas.</p>
+        </div>
+
+        <div class="feature-card">
+          <p class="feature-title"> 🤖 Enfoque seguro</p>
+          <p class="feature-text">Diseñado para entornos empresariales.</p>
+        </div>
+
+        <div class="feature-card">
+          <p class="feature-title"> 🤖 Multimodal</p>
+          <p class="feature-text">Texto + imagen + audio en el mismo flujo.</p>
+        </div>
+      </div>
     </div>
 
-    <!-- Mitad derecha: espacio para imagen -->
-    <div class="hero-image" style="flex: 1; min-width: 300px; display:flex; justify-content:center; align-items:center;">
-      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSHRWabz4UxIhWuVnKirKePU17rre2lioZjxQ&s" alt="Imagen Asistente IA" style="max-width:100%; border-radius:12px;">
+    <div class="hero-media">
+      <div class="hero-imageWrap">
+  <img
+    src="https://www-cms.pipedriveassets.com/cdn-cgi/image/quality=70,format=auto/https://www-cms.pipedriveassets.com/Best-AI-business-assistants-for-SMBs.png"
+    alt="Imagen Asistente IA"
+    class="hero-image"
+  />
+</div>
+
+      <div class="hero-stats">
+        <div class="stat">
+          <p class="stat-number">3</p>
+          <p class="stat-label">Modalidades para preguntas</p>
+        </div>
+        <div class="stat">
+          <p class="stat-number">24/7</p>
+          <p class="stat-label">Disponible en todo momento</p>
+        </div>
+        <div class="stat">
+          <p class="stat-number">IA</p>
+          <p class="stat-label">Asistencia personalizada para clientes</p>
+        </div>
+      </div>
     </div>
 
   </div>
