@@ -1,14 +1,13 @@
-/* En tu navbar.component.scss */
 .nav-link {
   @apply text-white font-semibold px-3 py-2 rounded-lg transition-all;
   &:hover {
-    @apply text-emp-celeste;
+    @apply text-emerald-300;
   }
 }
 
 .nav-link-mobile {
   @apply text-white font-semibold block border-b border-white/10 transition-all py-4 px-6;
   &:hover {
-    @apply text-emp-celeste bg-white/10;
+    @apply text-emerald-300 bg-white/10;
   }
 }

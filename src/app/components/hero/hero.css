@@ -1,7 +1,7 @@
 .hero {
   padding: 5.5rem 1.5rem 4.5rem;
   color: #ffffff;
-  background: linear-gradient(180deg, #171a21 0%, #1c1f26 55%, #151821 100%);
+  background: linear-gradient(180deg, #0b1a13 0%, #0f241a 55%, #08130e 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -24,9 +24,9 @@
   display: inline-block;
   padding: 0.45rem 0.8rem;
   border-radius: 999px;
-  background: rgba(79, 70, 229, 0.16);
-  border: 1px solid rgba(79, 70, 229, 0.30);
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.30);
+  color: rgba(255, 255, 255, 0.92);
   font-size: 0.9rem;
   letter-spacing: 0.2px;
   margin-bottom: 1rem;
@@ -44,7 +44,6 @@
   margin-top: 0.35rem;
   color: rgba(255, 255, 255, 0.92);
   font-weight: 700;
-  position: relative;
 }
 
 .hero-subtitle {
@@ -52,7 +51,7 @@
   font-size: 1.05rem;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.78);
-  max-width: 58ch;
+  max-width: 60ch;
 }
 
 .hero-actions {
@@ -62,7 +61,6 @@
   margin-bottom: 1.6rem;
 }
 
-/* Botones */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -70,21 +68,21 @@
   text-decoration: none;
   padding: 0.85rem 1.15rem;
   border-radius: 14px;
-  font-weight: 600;
+  font-weight: 700;
   transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
   cursor: pointer;
   user-select: none;
 }
 
 .btn-primary {
-  background: #4F46E5;
-  color: #ffffff;
-  border: 1px solid rgba(79, 70, 229, 0.55);
+  background: #10B981;
+  color: #062015;
+  border: 1px solid rgba(16, 185, 129, 0.55);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  background: #4338CA;
+  background: #0EA371;
 }
 
 .btn-secondary {
@@ -99,7 +97,6 @@
   border-color: rgba(255, 255, 255, 0.18);
 }
 
-/* Cards de beneficios */
 .hero-features {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -115,7 +112,7 @@
 
 .feature-title {
   margin: 0 0 0.25rem;
-  font-weight: 700;
+  font-weight: 800;
   color: rgba(255, 255, 255, 0.92);
 }
 
@@ -160,7 +157,7 @@
 .stat {
   padding: 0.85rem 0.9rem;
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.22);
   border: 1px solid rgba(255, 255, 255, 0.10);
   text-align: center;
 }
@@ -168,7 +165,7 @@
 .stat-number {
   margin: 0;
   font-size: 1.05rem;
-  font-weight: 800;
+  font-weight: 900;
   color: rgba(255, 255, 255, 0.92);
 }
 
@@ -178,7 +175,6 @@
   color: rgba(255, 255, 255, 0.68);
 }
 
-/* Responsive */
 @media (max-width: 900px) {
   .hero {
     padding: 4.5rem 1.25rem 4rem;
