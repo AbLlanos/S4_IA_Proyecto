@@ -132,20 +132,26 @@ export class ChatAsistente implements AfterViewInit {
         // Imagen PRIMERO, luego texto ABAJO
         addMessage('', 'user', fileCopy);
         if (text) {
-          setTimeout(() => addMessage(text, 'user'), 100);  // Texto 100ms después
+          setTimeout(() => addMessage(text, 'user'), 100);
         }
 
         setTimeout(() => {
           const reply = getBotReply(text || fileCopy.name || '');
           addMessage(reply, 'bot');
         }, 700);
-        inputTextarea.value = '';  // Limpia siempre
+
+        inputTextarea.value = '';  // Limpia
+        inputTextarea.style.height = 'auto';  // ← RESET altura
+        inputTextarea.style.height = '22px';  // ← Tamaño normal (min-height)
         return;
       }
 
-      // Solo texto (igual que antes)
+      // Solo texto
       const soloText = text;
       inputTextarea.value = '';
+      inputTextarea.style.height = 'auto';  // ← RESET altura
+      inputTextarea.style.height = '22px';  // ← Tamaño normal (min-height)
+
       addMessage(soloText, 'user');
       setTimeout(() => {
         const reply = getBotReply(soloText);
@@ -156,10 +162,25 @@ export class ChatAsistente implements AfterViewInit {
 
 
 
+
     // Click botón enviar
     if (sendBtn) {
       sendBtn.addEventListener('click', handleSend);
     }
+
+    // Auto-expansión de textarea
+    const adjustHeight = () => {
+      inputTextarea.style.height = 'auto';  // Reset
+      inputTextarea.style.height = Math.min(inputTextarea.scrollHeight, 110) + 'px';
+    };
+
+    inputTextarea.addEventListener('input', adjustHeight);
+    inputTextarea.addEventListener('paste', () => setTimeout(adjustHeight, 0));
+
+    // Llama al inicio
+    adjustHeight();
+
+
 
     // Enter en textarea
     if (inputTextarea) {
