@@ -3,14 +3,15 @@ import { AfterViewInit, Component, ElementRef, ViewEncapsulation } from '@angula
 @Component({
   selector: 'app-chat-asistente',
   standalone: true,
-  imports: [],
   templateUrl: './chat-asistente.html',
-  styleUrl: './chat-asistente.css',
+  styleUrls: ['./chat-asistente.css'],
   encapsulation: ViewEncapsulation.None,
 })
 export class ChatAsistente implements AfterViewInit {
+  cart: { name: string; qty: number; price: number }[] = [];
+  lastAddedIndex: number = -1;
 
-  constructor(private host: ElementRef<HTMLElement>) { }
+  constructor(private host: ElementRef<HTMLElement>) {}
 
   ngAfterViewInit(): void {
     const root = this.host.nativeElement;
@@ -23,30 +24,12 @@ export class ChatAsistente implements AfterViewInit {
 
     let attachedFile: File | null = null;
 
-    // --- lógica de respuestas predefinidas ---
-    const getBotReply = (text: string): string => {
-      const msg = (text || '').toLowerCase();
-
-      if (msg.includes('precio') || msg.includes('$') || msg.includes('cost')) {
-        return 'Estamos procesando tu solicitud de precio, en breve verás el valor del producto.';
-      }
-
-      if (msg.includes('stock') || msg.includes('disponible') || msg.includes('hay')) {
-        return 'Tu producto está en stock o verificándose en bodega.';
-      }
-
-      return 'No encontramos este producto, por favor envía una foto o más detalles.';
-    };
-
     const scrollToBottom = () => {
-      if (!chatMessages) return;
       chatMessages.scrollTop = chatMessages.scrollHeight;
     };
 
     const addMessage = (content: string, from: 'user' | 'bot' = 'user', file?: File) => {
-      if (welcomeState) {
-        welcomeState.style.display = 'none';
-      }
+      if (welcomeState) welcomeState.style.display = 'none';
 
       const msgRow = document.createElement('div');
       msgRow.className = `msg-row ${from}-row`;
@@ -71,7 +54,7 @@ export class ChatAsistente implements AfterViewInit {
           audio.controls = true;
           bubble.appendChild(audio);
         }
-      } else if (content) {
+      } else {
         const p = document.createElement('p');
         p.className = 'msg-text';
         p.textContent = content;
@@ -90,107 +73,96 @@ export class ChatAsistente implements AfterViewInit {
       scrollToBottom();
     };
 
-    // Manejo selección archivo
-    if (fileUpload) {
-      fileUpload.addEventListener('change', (e: Event) => {
-        const input = e.target as HTMLInputElement;
-        attachedFile = input.files && input.files[0] ? input.files[0] : null;
-        attachedPreview.innerHTML = '';
+    fileUpload.addEventListener('change', (e: Event) => {
+      const input = e.target as HTMLInputElement;
+      attachedFile = input.files && input.files[0] ? input.files[0] : null;
+      attachedPreview.innerHTML = '';
 
-        if (attachedFile) {
-          const fileType = attachedFile.type;
-          const preview = document.createElement('div');
-          preview.classList.add('file-preview');
-          preview.style.padding = '6px 12px';
-          preview.style.background = 'rgba(14, 165, 233, 0.15)';
-          preview.style.borderRadius = '8px';
-          preview.style.fontSize = '0.85rem';
+      if (attachedFile) {
+        const preview = document.createElement('div');
+        preview.textContent = attachedFile.type.startsWith('image/') ? `📷 ${attachedFile.name}` :
+                              attachedFile.type.startsWith('audio/') ? `🎤 ${attachedFile.name}` : `📎 ${attachedFile.name}`;
+        preview.style.padding = '6px 12px';
+        preview.style.background = 'rgba(14, 165, 233, 0.15)';
+        preview.style.borderRadius = '8px';
+        attachedPreview.appendChild(preview);
+      }
+    });
 
-          if (fileType.startsWith('image/')) {
-            preview.textContent = `📷 ${attachedFile.name}`;
-          } else if (fileType.startsWith('audio/')) {
-            preview.textContent = `🎤 ${attachedFile.name}`;
-          } else {
-            preview.textContent = `📎 ${attachedFile.name}`;
-          }
-          attachedPreview.appendChild(preview);
-        }
-      });
-    }
+    const sendToBackend = async (text: string, file?: File) => {
+      const formData = new FormData();
+      if (file) formData.append('file', file);
+      if (text) formData.append('text', text);
 
-    const handleSend = () => {
+      try {
+        const res = await fetch('http://localhost:5000/predict', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        return data.prediction || data.error;
+      } catch {
+        return 'Error conectando con el servidor';
+      }
+    };
+
+    const handleSend = async () => {
       const text = inputTextarea.value.trim();
       if (!attachedFile && !text) return;
 
-      // SIEMPRE envía imagen + texto si hay ambos
+      // Agregar mensaje usuario
       if (attachedFile) {
-        const fileCopy = attachedFile;
-        attachedFile = null;
-        attachedPreview.innerHTML = '';
-        fileUpload.value = '';
+        addMessage('', 'user', attachedFile);
+      }
+      if (text) addMessage(text, 'user');
 
-        // Imagen PRIMERO, luego texto ABAJO
-        addMessage('', 'user', fileCopy);
-        if (text) {
-          setTimeout(() => addMessage(text, 'user'), 100);
+      const fileCopy = attachedFile;
+      attachedFile = null;
+      attachedPreview.innerHTML = '';
+      fileUpload.value = '';
+
+      // Llamar backend
+      const reply = await sendToBackend(text, fileCopy || undefined);
+      addMessage(reply, 'bot');
+
+      // --- Ejemplo de carrito y "añade X más" ---
+      if (text.toLowerCase().includes('añade 2 más')) {
+        if (this.lastAddedIndex >= 0) {
+          this.cart[this.lastAddedIndex].qty += 2;
         }
-
-        setTimeout(() => {
-          const reply = getBotReply(text || fileCopy.name || '');
-          addMessage(reply, 'bot');
-        }, 700);
-
-        inputTextarea.value = '';  // Limpia
-        inputTextarea.style.height = 'auto';  // ← RESET altura
-        inputTextarea.style.height = '22px';  // ← Tamaño normal (min-height)
-        return;
+      } else {
+        // Si el mensaje menciona un producto nuevo, agrégalo
+        // Ejemplo simple: detectar "jugo", "mantequilla"...
+        if (text.toLowerCase().includes('mantequilla')) {
+          this.cart.push({ name: 'Mantequilla 200g', qty: 1, price: 1.98 });
+          this.lastAddedIndex = this.cart.length - 1;
+        } else if (text.toLowerCase().includes('jugo')) {
+          this.cart.push({ name: 'Jugo en caja 1L', qty: 1, price: 1.20 });
+          this.lastAddedIndex = this.cart.length - 1;
+        }
       }
 
-      // Solo texto
-      const soloText = text;
       inputTextarea.value = '';
-      inputTextarea.style.height = 'auto';  // ← RESET altura
-      inputTextarea.style.height = '22px';  // ← Tamaño normal (min-height)
-
-      addMessage(soloText, 'user');
-      setTimeout(() => {
-        const reply = getBotReply(soloText);
-        addMessage(reply, 'bot');
-      }, 600);
+      inputTextarea.style.height = 'auto';
+      inputTextarea.style.height = '22px';
     };
 
+    sendBtn.addEventListener('click', handleSend);
 
-
-
-
-    // Click botón enviar
-    if (sendBtn) {
-      sendBtn.addEventListener('click', handleSend);
-    }
+    inputTextarea.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
 
     // Auto-expansión de textarea
     const adjustHeight = () => {
-      inputTextarea.style.height = 'auto';  // Reset
+      inputTextarea.style.height = 'auto';
       inputTextarea.style.height = Math.min(inputTextarea.scrollHeight, 110) + 'px';
     };
-
     inputTextarea.addEventListener('input', adjustHeight);
     inputTextarea.addEventListener('paste', () => setTimeout(adjustHeight, 0));
-
-    // Llama al inicio
     adjustHeight();
-
-
-
-    // Enter en textarea
-    if (inputTextarea) {
-      inputTextarea.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          handleSend();
-        }
-      });
-    }
   }
-
 }
