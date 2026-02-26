@@ -39,5 +39,33 @@ export class Ia {
     return this.http.post(`${this.apiUrl}/audio`, formData);
   }
 
+  streamText(message: string): Observable<any> {
+    const formData = new FormData();
+    formData.append('message', message);
+    formData.append('session_id', this.sessionId);
+    return new Observable(observer => {
+      const eventSource = new EventSource(`${this.apiUrl}/text?message=${encodeURIComponent(message)}&session_id=${this.sessionId}`);
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.done) {
+          eventSource.close();
+          observer.complete();
+        } else {
+          observer.next(data);
+        }
+      };
+      eventSource.onerror = (err) => {
+        eventSource.close();
+        observer.error(err);
+      };
+      return () => eventSource.close();
+    });
+  }
+
+  getSessionId(): string {
+    return this.sessionId;
+  }
+
+
 
 }

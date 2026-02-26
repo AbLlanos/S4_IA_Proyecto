@@ -13,7 +13,6 @@ export class ChatAsistente implements AfterViewInit {
 
   private ia = inject(Ia);
 
-
   constructor(private host: ElementRef<HTMLElement>, private http: HttpClient) { }
 
   ngAfterViewInit(): void {
@@ -80,6 +79,116 @@ export class ChatAsistente implements AfterViewInit {
       scrollToBottom();
     };
 
+    // ── NUEVO: Typing dots mientras espera ────────────────────────
+    const createTypingBubble = () => {
+      if (welcomeState) welcomeState.style.display = 'none';
+
+      const msgRow = document.createElement('div');
+      msgRow.className = 'msg-row bot-row typing-row';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar bot-avatar';
+      avatar.textContent = '🤖';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble bot-bubble typing-bubble';
+      bubble.innerHTML = `
+        <div class="typing-dots">
+          <span></span><span></span><span></span>
+        </div>
+      `;
+
+      msgRow.appendChild(avatar);
+      msgRow.appendChild(bubble);
+      chatMessages.appendChild(msgRow);
+      scrollToBottom();
+      return msgRow;
+    };
+
+    // ── NUEVO: Streaming fetch usando ReadableStream ───────────────
+    const streamBotResponse = async (
+      endpoint: string,
+      formData: FormData
+    ): Promise<void> => {
+      if (welcomeState) welcomeState.style.display = 'none';
+
+      // ← PRIMERO mostrar typing dots
+      const typingRow = document.createElement('div');
+      typingRow.className = 'msg-row bot-row';
+      const typingAvatar = document.createElement('div');
+      typingAvatar.className = 'avatar bot-avatar';
+      typingAvatar.textContent = '🤖';
+      const typingBubble = document.createElement('div');
+      typingBubble.className = 'msg-bubble bot-bubble typing-bubble';
+      typingBubble.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+      typingRow.appendChild(typingAvatar);
+      typingRow.appendChild(typingBubble);
+      chatMessages.appendChild(typingRow);
+      scrollToBottom();
+
+      // Preparar burbuja de respuesta (oculta)
+      const msgRow = document.createElement('div');
+      msgRow.className = 'msg-row bot-row';
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar bot-avatar';
+      avatar.textContent = '🤖';
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble bot-bubble';
+      const p = document.createElement('p');
+      p.className = 'msg-text';
+      p.textContent = '';
+      bubble.appendChild(p);
+      msgRow.appendChild(avatar);
+      msgRow.appendChild(bubble);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok || !response.body) {
+          typingRow.remove();
+          p.textContent = '❌ Error al conectar.';
+          chatMessages.appendChild(msgRow);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let firstChunk = true;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // ← Al llegar el primer chunk, quitar dots y mostrar burbuja real
+          if (firstChunk) {
+            typingRow.remove();
+            chatMessages.appendChild(msgRow);
+            firstChunk = false;
+          }
+
+          p.textContent = buffer;
+          scrollToBottom();
+        }
+
+        buffer += decoder.decode();
+        p.textContent = buffer;
+        scrollToBottom();
+
+      } catch (err) {
+        typingRow.remove();
+        console.error('Stream error:', err);
+        p.textContent = '❌ Error al obtener respuesta.';
+        chatMessages.appendChild(msgRow);
+      }
+    };
+
+
     // ── Archivo adjunto (imagen) ───────────────────────────────────
     fileUpload?.addEventListener('change', (e: Event) => {
       const input = e.target as HTMLInputElement;
@@ -95,7 +204,6 @@ export class ChatAsistente implements AfterViewInit {
     // ── Micrófono ─────────────────────────────────────────────────
     microBtn?.addEventListener('click', async () => {
       if (!isRecording) {
-        // ── INICIAR grabación ──
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           mediaRecorder = new MediaRecorder(stream);
@@ -106,17 +214,16 @@ export class ChatAsistente implements AfterViewInit {
           };
 
           mediaRecorder.onstop = () => {
-            // Detener todas las pistas del micrófono
             stream.getTracks().forEach(t => t.stop());
 
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-
-            // Mostrar indicador de procesando
             addMessage('🎤 Audio enviado, transcribiendo...', 'user');
 
+            // Audio sigue usando subscribe (no streaming)
+            const typingBubble = createTypingBubble();
             this.ia.sendAudio(audioBlob).subscribe({
               next: (res) => {
-                // Reemplazar el mensaje de espera con la transcripción real
+                typingBubble.remove();
                 const lastUserRow = chatMessages.querySelectorAll('.user-row');
                 const lastRow = lastUserRow[lastUserRow.length - 1];
                 if (lastRow) {
@@ -126,12 +233,12 @@ export class ChatAsistente implements AfterViewInit {
                 addMessage(res.response, 'bot');
               },
               error: (err) => {
+                typingBubble.remove();
                 console.error('Error audio:', err);
                 addMessage('❌ Error al procesar el audio.', 'bot');
               }
             });
 
-            // Resetear estado visual
             microBtn.classList.remove('recording');
             microBtn.title = 'Grabar audio';
             isRecording = false;
@@ -139,7 +246,7 @@ export class ChatAsistente implements AfterViewInit {
 
           mediaRecorder.start();
           isRecording = true;
-          microBtn.classList.add('recording');  // CSS para indicar grabación
+          microBtn.classList.add('recording');
           microBtn.title = 'Detener grabación';
 
         } catch (err) {
@@ -148,22 +255,30 @@ export class ChatAsistente implements AfterViewInit {
         }
 
       } else {
-        // ── DETENER grabación ──
         mediaRecorder?.stop();
       }
     });
 
     // ── Enviar texto/imagen ───────────────────────────────────────
-    const handleSend = () => {
+    const handleSend = async () => {
       const text = inputTextarea.value.trim();
       if (!text && !attachedFile) return;
 
       if (attachedFile) {
+        // Imagen: sigue usando subscribe (respuesta completa)
         const fileCopy = attachedFile;
         addMessage(text, 'user', fileCopy);
 
-        this.ia.sendImage(fileCopy, text).subscribe(res => {
-          addMessage(res.response, 'bot');
+        const typingBubble = createTypingBubble();
+        this.ia.sendImage(fileCopy, text).subscribe({
+          next: (res) => {
+            typingBubble.remove();
+            addMessage(res.response, 'bot');
+          },
+          error: (err) => {
+            typingBubble.remove();
+            addMessage('❌ Error al procesar imagen.', 'bot');
+          }
         });
 
         attachedFile = null;
@@ -173,12 +288,15 @@ export class ChatAsistente implements AfterViewInit {
         return;
       }
 
+      // Texto: streaming palabra por palabra ✅
       addMessage(text, 'user');
-      this.ia.sendText(text).subscribe(res => {
-        addMessage(res.response, 'bot');
-      });
-
       inputTextarea.value = '';
+
+      const formData = new FormData();
+      formData.append('message', text);
+      formData.append('session_id', this.ia.getSessionId());
+
+      await streamBotResponse('http://localhost:8000/chat/text', formData);
     };
 
     sendBtn?.addEventListener('click', handleSend);
@@ -190,5 +308,4 @@ export class ChatAsistente implements AfterViewInit {
       }
     });
   }
-
 }
