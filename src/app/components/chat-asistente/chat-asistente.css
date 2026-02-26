@@ -425,3 +425,15 @@ html, body {
         max-width: 88%;
     }
 }
+
+.micro-btn.recording {
+  background-color: #ef4444;
+  color: white;
+  border-radius: 50%;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.15); }
+}

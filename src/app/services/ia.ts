@@ -6,14 +6,15 @@ import { Observable } from 'rxjs';
   providedIn: 'root',
 })
 export class Ia {
-
   private apiUrl = 'http://localhost:8000/chat';
+  private sessionId = crypto.randomUUID(); // ID único por sesión de usuario
 
   constructor(private http: HttpClient) { }
 
   sendText(message: string): Observable<any> {
     const formData = new FormData();
     formData.append('message', message);
+    formData.append('session_id', this.sessionId);
     return this.http.post(`${this.apiUrl}/text`, formData);
   }
 
@@ -21,6 +22,7 @@ export class Ia {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('instruction', instruction || '');
+    formData.append('session_id', this.sessionId);
     return this.http.post(`${this.apiUrl}/image`, formData);
   }
 
@@ -29,4 +31,13 @@ export class Ia {
     formData.append('last_response', lastResponse);
     return this.http.post(`${this.apiUrl}/confirm`, formData);
   }
+
+  sendAudio(audioBlob: Blob): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.webm');
+    formData.append('session_id', this.sessionId);
+    return this.http.post(`${this.apiUrl}/audio`, formData);
+  }
+
+
 }
