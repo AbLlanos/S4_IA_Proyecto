@@ -296,7 +296,9 @@ export class ChatAsistente implements AfterViewInit {
       formData.append('message', text);
       formData.append('session_id', this.ia.getSessionId());
 
-      await streamBotResponse('http://localhost:8000/chat/text', formData);
+      // await streamBotResponse('http://localhost:8000/chat/text', formData);
+      await streamBotResponse('https://gabrielbackend-788289092522.us-central1.run.app/chat/text', formData);
+
     };
 
     sendBtn?.addEventListener('click', handleSend);

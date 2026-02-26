@@ -6,8 +6,9 @@ import { Observable } from 'rxjs';
   providedIn: 'root',
 })
 export class Ia {
-  private apiUrl = 'http://localhost:8000/chat';
-  private sessionId = crypto.randomUUID(); // ID único por sesión de usuario
+  // private apiUrl = 'http://localhost:8000/chat';
+  private apiUrl = 'https://gabrielbackend-788289092522.us-central1.run.app/chat';
+  private sessionId = crypto.randomUUID();
 
   constructor(private http: HttpClient) { }
 
