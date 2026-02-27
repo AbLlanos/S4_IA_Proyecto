@@ -1,6 +1,13 @@
 import { AfterViewInit, Component, ElementRef, ViewEncapsulation, inject } from '@angular/core';
 import { Ia } from '../../services/ia';
 import { HttpClient } from '@angular/common/http';
+import { marked } from 'marked';
+
+// ← CONFIGURAR MARKED PARA SEGURIDAD Y FORMATO
+marked.setOptions({
+  breaks: true,  // Convierte \n en <br>
+  gfm: true      // GitHub Flavored Markdown (listas, negritas, etc.)
+});
 
 @Component({
   selector: 'app-chat-asistente',
@@ -63,7 +70,13 @@ export class ChatAsistente implements AfterViewInit {
       if (content) {
         const p = document.createElement('p');
         p.className = 'msg-text';
-        p.textContent = content;
+        
+        // ← MARKED SOLO PARA BOT, texto plano para usuario
+        if (from === 'bot') {
+          p.innerHTML = marked.parse(content) as string;
+        } else {
+          p.textContent = content;
+        }
         bubble.appendChild(p);
       }
 
@@ -79,7 +92,7 @@ export class ChatAsistente implements AfterViewInit {
       scrollToBottom();
     };
 
-    // ── NUEVO: Typing dots mientras espera ────────────────────────
+    // ── Typing dots mientras espera ───────────────────────────────
     const createTypingBubble = () => {
       if (welcomeState) welcomeState.style.display = 'none';
 
@@ -105,7 +118,7 @@ export class ChatAsistente implements AfterViewInit {
       return msgRow;
     };
 
-    // ── NUEVO: Streaming fetch usando ReadableStream ───────────────
+    // ── Streaming fetch usando ReadableStream (TEXTO PLANO durante stream) ──
     const streamBotResponse = async (
       endpoint: string,
       formData: FormData
@@ -126,7 +139,7 @@ export class ChatAsistente implements AfterViewInit {
       chatMessages.appendChild(typingRow);
       scrollToBottom();
 
-      // Preparar burbuja de respuesta (oculta)
+      // Preparar burbuja de respuesta
       const msgRow = document.createElement('div');
       msgRow.className = 'msg-row bot-row';
       const avatar = document.createElement('div');
@@ -172,12 +185,14 @@ export class ChatAsistente implements AfterViewInit {
             firstChunk = false;
           }
 
+          // ← TEXTO PLANO durante streaming (evita parpadeo de markdown roto)
           p.textContent = buffer;
           scrollToBottom();
         }
 
+        // ← AL FINALIZAR: aplicar MARKED completo
         buffer += decoder.decode();
-        p.textContent = buffer;
+        p.innerHTML = marked.parse(buffer) as string;
         scrollToBottom();
 
       } catch (err) {
@@ -187,7 +202,6 @@ export class ChatAsistente implements AfterViewInit {
         chatMessages.appendChild(msgRow);
       }
     };
-
 
     // ── Archivo adjunto (imagen) ───────────────────────────────────
     fileUpload?.addEventListener('change', (e: Event) => {
@@ -256,7 +270,7 @@ export class ChatAsistente implements AfterViewInit {
                 }
                 // ──────────────────────────────────────────────────────────
 
-                addMessage(res.response, 'bot');
+                addMessage(res.response, 'bot'); // ← Se renderiza con MARKED
               },
               error: (err) => {
                 typingBubble.remove();
@@ -269,7 +283,6 @@ export class ChatAsistente implements AfterViewInit {
             microBtn.title = 'Grabar audio';
             isRecording = false;
           };
-
 
           mediaRecorder.start();
           isRecording = true;
@@ -310,11 +323,8 @@ export class ChatAsistente implements AfterViewInit {
         });
 
         addMessage('Pedido confirmado. ¡Gracias por tu compra! Puedes iniciar un nuevo pedido.', 'bot');
-        return;  // ← sale sin pasar al streaming
+        return;
       }
-
-
-
 
       if (attachedFile) {
         // Imagen: sigue usando subscribe (respuesta completa)
@@ -325,7 +335,7 @@ export class ChatAsistente implements AfterViewInit {
         this.ia.sendImage(fileCopy, text).subscribe({
           next: (res) => {
             typingBubble.remove();
-            addMessage(res.response, 'bot');
+            addMessage(res.response, 'bot'); // ← Se renderiza con MARKED
           },
           error: (err) => {
             typingBubble.remove();
@@ -348,9 +358,7 @@ export class ChatAsistente implements AfterViewInit {
       formData.append('message', text);
       formData.append('session_id', this.ia.getSessionId());
 
-      // await streamBotResponse('http://localhost:8000/chat/text', formData);
       await streamBotResponse('https://gabrielbackend-788289092522.us-central1.run.app/chat/text', formData);
-
     };
 
     sendBtn?.addEventListener('click', handleSend);
