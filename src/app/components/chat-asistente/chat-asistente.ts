@@ -1,16 +1,26 @@
-import { AfterViewInit, Component, ElementRef, ViewEncapsulation } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewEncapsulation, inject } from '@angular/core';
+import { Ia } from '../../services/ia';
+import { HttpClient } from '@angular/common/http';
+import { marked } from 'marked';
+
+// ← CONFIGURAR MARKED PARA SEGURIDAD Y FORMATO
+marked.setOptions({
+  breaks: true,  // Convierte \n en <br>
+  gfm: true      // GitHub Flavored Markdown (listas, negritas, etc.)
+});
 
 @Component({
   selector: 'app-chat-asistente',
   standalone: true,
-  imports: [],
   templateUrl: './chat-asistente.html',
   styleUrl: './chat-asistente.css',
   encapsulation: ViewEncapsulation.None,
 })
 export class ChatAsistente implements AfterViewInit {
 
-  constructor(private host: ElementRef<HTMLElement>) { }
+  private ia = inject(Ia);
+
+  constructor(private host: ElementRef<HTMLElement>, private http: HttpClient) { }
 
   ngAfterViewInit(): void {
     const root = this.host.nativeElement;
@@ -20,33 +30,22 @@ export class ChatAsistente implements AfterViewInit {
     const fileUpload = root.querySelector('#file-upload') as HTMLInputElement;
     const attachedPreview = root.querySelector('.attached-preview') as HTMLDivElement;
     const welcomeState = root.querySelector('.welcome-state') as HTMLDivElement | null;
+    const microBtn = root.querySelector('.micro-btn') as HTMLButtonElement;
 
     let attachedFile: File | null = null;
 
-    // --- lógica de respuestas predefinidas ---
-    const getBotReply = (text: string): string => {
-      const msg = (text || '').toLowerCase();
+    // ── Estado grabación ──────────────────────────────────────────
+    let mediaRecorder: MediaRecorder | null = null;
+    let audioChunks: Blob[] = [];
+    let isRecording = false;
 
-      if (msg.includes('precio') || msg.includes('$') || msg.includes('cost')) {
-        return 'Estamos procesando tu solicitud de precio, en breve verás el valor del producto.';
-      }
-
-      if (msg.includes('stock') || msg.includes('disponible') || msg.includes('hay')) {
-        return 'Tu producto está en stock o verificándose en bodega.';
-      }
-
-      return 'No encontramos este producto, por favor envía una foto o más detalles.';
-    };
-
+    // ── Helpers UI ────────────────────────────────────────────────
     const scrollToBottom = () => {
-      if (!chatMessages) return;
       chatMessages.scrollTop = chatMessages.scrollHeight;
     };
 
-    const addMessage = (content: string, from: 'user' | 'bot' = 'user', file?: File) => {
-      if (welcomeState) {
-        welcomeState.style.display = 'none';
-      }
+    const addMessage = (content: string, from: 'user' | 'bot', file?: File) => {
+      if (welcomeState) welcomeState.style.display = 'none';
 
       const msgRow = document.createElement('div');
       msgRow.className = `msg-row ${from}-row`;
@@ -58,23 +57,26 @@ export class ChatAsistente implements AfterViewInit {
       const bubble = document.createElement('div');
       bubble.className = `msg-bubble ${from}-bubble`;
 
-      if (file) {
-        if (file.type.startsWith('image/')) {
-          const img = document.createElement('img');
-          img.src = URL.createObjectURL(file);
-          img.style.maxWidth = '200px';
-          img.style.borderRadius = '12px';
-          bubble.appendChild(img);
-        } else if (file.type.startsWith('audio/')) {
-          const audio = document.createElement('audio');
-          audio.src = URL.createObjectURL(file);
-          audio.controls = true;
-          bubble.appendChild(audio);
-        }
-      } else if (content) {
+      if (file && file.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.style.maxWidth = '200px';
+        img.style.borderRadius = '12px';
+        img.style.display = 'block';
+        img.style.marginBottom = content ? '8px' : '0';
+        bubble.appendChild(img);
+      }
+
+      if (content) {
         const p = document.createElement('p');
         p.className = 'msg-text';
-        p.textContent = content;
+        
+        // ← MARKED SOLO PARA BOT, texto plano para usuario
+        if (from === 'bot') {
+          p.innerHTML = marked.parse(content) as string;
+        } else {
+          p.textContent = content;
+        }
         bubble.appendChild(p);
       }
 
@@ -90,107 +92,282 @@ export class ChatAsistente implements AfterViewInit {
       scrollToBottom();
     };
 
-    // Manejo selección archivo
-    if (fileUpload) {
-      fileUpload.addEventListener('change', (e: Event) => {
-        const input = e.target as HTMLInputElement;
-        attachedFile = input.files && input.files[0] ? input.files[0] : null;
-        attachedPreview.innerHTML = '';
+    // ── Typing dots mientras espera ───────────────────────────────
+    const createTypingBubble = () => {
+      if (welcomeState) welcomeState.style.display = 'none';
 
-        if (attachedFile) {
-          const fileType = attachedFile.type;
-          const preview = document.createElement('div');
-          preview.classList.add('file-preview');
-          preview.style.padding = '6px 12px';
-          preview.style.background = 'rgba(14, 165, 233, 0.15)';
-          preview.style.borderRadius = '8px';
-          preview.style.fontSize = '0.85rem';
+      const msgRow = document.createElement('div');
+      msgRow.className = 'msg-row bot-row typing-row';
 
-          if (fileType.startsWith('image/')) {
-            preview.textContent = `📷 ${attachedFile.name}`;
-          } else if (fileType.startsWith('audio/')) {
-            preview.textContent = `🎤 ${attachedFile.name}`;
-          } else {
-            preview.textContent = `📎 ${attachedFile.name}`;
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar bot-avatar';
+      avatar.textContent = '🤖';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble bot-bubble typing-bubble';
+      bubble.innerHTML = `
+        <div class="typing-dots">
+          <span></span><span></span><span></span>
+        </div>
+      `;
+
+      msgRow.appendChild(avatar);
+      msgRow.appendChild(bubble);
+      chatMessages.appendChild(msgRow);
+      scrollToBottom();
+      return msgRow;
+    };
+
+    // ── Streaming fetch usando ReadableStream (TEXTO PLANO durante stream) ──
+    const streamBotResponse = async (
+      endpoint: string,
+      formData: FormData
+    ): Promise<void> => {
+      if (welcomeState) welcomeState.style.display = 'none';
+
+      // ← PRIMERO mostrar typing dots
+      const typingRow = document.createElement('div');
+      typingRow.className = 'msg-row bot-row';
+      const typingAvatar = document.createElement('div');
+      typingAvatar.className = 'avatar bot-avatar';
+      typingAvatar.textContent = '🤖';
+      const typingBubble = document.createElement('div');
+      typingBubble.className = 'msg-bubble bot-bubble typing-bubble';
+      typingBubble.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+      typingRow.appendChild(typingAvatar);
+      typingRow.appendChild(typingBubble);
+      chatMessages.appendChild(typingRow);
+      scrollToBottom();
+
+      // Preparar burbuja de respuesta
+      const msgRow = document.createElement('div');
+      msgRow.className = 'msg-row bot-row';
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar bot-avatar';
+      avatar.textContent = '🤖';
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble bot-bubble';
+      const p = document.createElement('p');
+      p.className = 'msg-text';
+      p.textContent = '';
+      bubble.appendChild(p);
+      msgRow.appendChild(avatar);
+      msgRow.appendChild(bubble);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok || !response.body) {
+          typingRow.remove();
+          p.textContent = '❌ Error al conectar.';
+          chatMessages.appendChild(msgRow);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let firstChunk = true;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // ← Al llegar el primer chunk, quitar dots y mostrar burbuja real
+          if (firstChunk) {
+            typingRow.remove();
+            chatMessages.appendChild(msgRow);
+            firstChunk = false;
           }
-          attachedPreview.appendChild(preview);
+
+          // ← TEXTO PLANO durante streaming (evita parpadeo de markdown roto)
+          p.textContent = buffer;
+          scrollToBottom();
         }
-      });
-    }
 
-    const handleSend = () => {
-      const text = inputTextarea.value.trim();
-      if (!attachedFile && !text) return;
+        // ← AL FINALIZAR: aplicar MARKED completo
+        buffer += decoder.decode();
+        p.innerHTML = marked.parse(buffer) as string;
+        scrollToBottom();
 
-      // SIEMPRE envía imagen + texto si hay ambos
+      } catch (err) {
+        typingRow.remove();
+        console.error('Stream error:', err);
+        p.textContent = '❌ Error al obtener respuesta.';
+        chatMessages.appendChild(msgRow);
+      }
+    };
+
+    // ── Archivo adjunto (imagen) ───────────────────────────────────
+    fileUpload?.addEventListener('change', (e: Event) => {
+      const input = e.target as HTMLInputElement;
+      attachedFile = input.files?.[0] || null;
+      attachedPreview.innerHTML = '';
       if (attachedFile) {
-        const fileCopy = attachedFile;
-        attachedFile = null;
-        attachedPreview.innerHTML = '';
-        fileUpload.value = '';
+        const preview = document.createElement('div');
+        preview.textContent = `📎 ${attachedFile.name}`;
+        attachedPreview.appendChild(preview);
+      }
+    });
 
-        // Imagen PRIMERO, luego texto ABAJO
-        addMessage('', 'user', fileCopy);
-        if (text) {
-          setTimeout(() => addMessage(text, 'user'), 100);
+    // ── Micrófono ─────────────────────────────────────────────────
+    microBtn?.addEventListener('click', async () => {
+      if (!isRecording) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+
+          mediaRecorder.ondataavailable = (e: BlobEvent) => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = () => {
+            stream.getTracks().forEach(t => t.stop());
+
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            addMessage('🎤 Audio enviado, transcribiendo...', 'user');
+
+            const typingBubble = createTypingBubble();
+            this.ia.sendAudio(audioBlob).subscribe({
+              next: (res) => {
+                typingBubble.remove();
+
+                // Actualizar texto del mensaje de audio
+                const lastUserRow = chatMessages.querySelectorAll('.user-row');
+                const lastRow = lastUserRow[lastUserRow.length - 1];
+                if (lastRow) {
+                  const p = lastRow.querySelector('.msg-text');
+                  if (p) p.textContent = `🎤 "${res.transcription}"`;
+                }
+
+                // ── Detectar confirmación en la transcripción ──────────────
+                const confirmKeywords = ['confirmo', 'confirmar', 'sí confirmo', 'si confirmo'];
+                const isConfirm = confirmKeywords.some(k =>
+                  res.transcription.toLowerCase().includes(k)
+                );
+
+                if (isConfirm) {
+                  const botBubbles = chatMessages.querySelectorAll('.bot-bubble .msg-text');
+                  const lastBotText = botBubbles[botBubbles.length - 1]?.textContent || '';
+
+                  const confirmData = new FormData();
+                  confirmData.append('last_response', lastBotText);
+                  confirmData.append('session_id', this.ia.getSessionId());
+
+                  fetch('https://gabrielbackend-788289092522.us-central1.run.app/chat/confirm', {
+                    method: 'POST',
+                    body: confirmData
+                  });
+
+                  addMessage('✅ Pedido confirmado. ¡Gracias por tu compra! Puedes iniciar un nuevo pedido.', 'bot');
+                  return;
+                }
+                // ──────────────────────────────────────────────────────────
+
+                addMessage(res.response, 'bot'); // ← Se renderiza con MARKED
+              },
+              error: (err) => {
+                typingBubble.remove();
+                console.error('Error audio:', err);
+                addMessage('❌ Error al procesar el audio.', 'bot');
+              }
+            });
+
+            microBtn.classList.remove('recording');
+            microBtn.title = 'Grabar audio';
+            isRecording = false;
+          };
+
+          mediaRecorder.start();
+          isRecording = true;
+          microBtn.classList.add('recording');
+          microBtn.title = 'Detener grabación';
+
+        } catch (err) {
+          console.error('Micrófono no disponible:', err);
+          addMessage('❌ No se pudo acceder al micrófono.', 'bot');
         }
 
-        setTimeout(() => {
-          const reply = getBotReply(text || fileCopy.name || '');
-          addMessage(reply, 'bot');
-        }, 700);
+      } else {
+        mediaRecorder?.stop();
+      }
+    });
 
-        inputTextarea.value = '';  // Limpia
-        inputTextarea.style.height = 'auto';  // ← RESET altura
-        inputTextarea.style.height = '22px';  // ← Tamaño normal (min-height)
+    // ── Enviar texto/imagen ───────────────────────────────────────
+    const handleSend = async () => {
+      const text = inputTextarea.value.trim();
+      if (!text && !attachedFile) return;
+
+      // ── Detectar confirmación ─────────────────────────────────────
+      const confirmKeywords = ['confirmo', 'confirmar', 'sí confirmo', 'si confirmo'];
+      if (confirmKeywords.some(k => text.toLowerCase().includes(k))) {
+        const botBubbles = chatMessages.querySelectorAll('.bot-bubble .msg-text');
+        const lastBotText = botBubbles[botBubbles.length - 1]?.textContent || '';
+
+        const confirmData = new FormData();
+        confirmData.append('last_response', lastBotText);
+        confirmData.append('session_id', this.ia.getSessionId());
+
+        addMessage(text, 'user');
+        inputTextarea.value = '';
+
+        await fetch('https://gabrielbackend-788289092522.us-central1.run.app/chat/confirm', {
+          method: 'POST',
+          body: confirmData
+        });
+
+        addMessage('Pedido confirmado. ¡Gracias por tu compra! Puedes iniciar un nuevo pedido.', 'bot');
         return;
       }
 
-      // Solo texto
-      const soloText = text;
+      if (attachedFile) {
+        // Imagen: sigue usando subscribe (respuesta completa)
+        const fileCopy = attachedFile;
+        addMessage(text, 'user', fileCopy);
+
+        const typingBubble = createTypingBubble();
+        this.ia.sendImage(fileCopy, text).subscribe({
+          next: (res) => {
+            typingBubble.remove();
+            addMessage(res.response, 'bot'); // ← Se renderiza con MARKED
+          },
+          error: (err) => {
+            typingBubble.remove();
+            addMessage('❌ Error al procesar imagen.', 'bot');
+          }
+        });
+
+        attachedFile = null;
+        attachedPreview.innerHTML = '';
+        fileUpload.value = '';
+        inputTextarea.value = '';
+        return;
+      }
+
+      // Texto: streaming palabra por palabra ✅
+      addMessage(text, 'user');
       inputTextarea.value = '';
-      inputTextarea.style.height = 'auto';  // ← RESET altura
-      inputTextarea.style.height = '22px';  // ← Tamaño normal (min-height)
 
-      addMessage(soloText, 'user');
-      setTimeout(() => {
-        const reply = getBotReply(soloText);
-        addMessage(reply, 'bot');
-      }, 600);
+      const formData = new FormData();
+      formData.append('message', text);
+      formData.append('session_id', this.ia.getSessionId());
+
+      await streamBotResponse('https://gabrielbackend-788289092522.us-central1.run.app/chat/text', formData);
     };
 
+    sendBtn?.addEventListener('click', handleSend);
 
-
-
-
-    // Click botón enviar
-    if (sendBtn) {
-      sendBtn.addEventListener('click', handleSend);
-    }
-
-    // Auto-expansión de textarea
-    const adjustHeight = () => {
-      inputTextarea.style.height = 'auto';  // Reset
-      inputTextarea.style.height = Math.min(inputTextarea.scrollHeight, 110) + 'px';
-    };
-
-    inputTextarea.addEventListener('input', adjustHeight);
-    inputTextarea.addEventListener('paste', () => setTimeout(adjustHeight, 0));
-
-    // Llama al inicio
-    adjustHeight();
-
-
-
-    // Enter en textarea
-    if (inputTextarea) {
-      inputTextarea.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          handleSend();
-        }
-      });
-    }
+    inputTextarea?.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
   }
-
 }

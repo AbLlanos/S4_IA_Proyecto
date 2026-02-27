@@ -306,6 +306,7 @@ html, body {
     display: flex;
     gap: 8px;
     margin-bottom: 8px;
+    color: #ffffff;
 }
 
 .input-box {
@@ -424,4 +425,21 @@ html, body {
     .msg-bubble {
         max-width: 88%;
     }
+}
+
+.micro-btn.recording {
+  background-color: #ef4444;
+  color: white;
+  border-radius: 50%;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.15); }
+}
+
+.bot-bubble .msg-text {
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
