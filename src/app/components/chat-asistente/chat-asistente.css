@@ -438,3 +438,8 @@ html, body {
   0%, 100% { transform: scale(1); }
   50%       { transform: scale(1.15); }
 }
+
+.bot-bubble .msg-text {
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
