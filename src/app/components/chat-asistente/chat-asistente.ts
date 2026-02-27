@@ -219,17 +219,43 @@ export class ChatAsistente implements AfterViewInit {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             addMessage('🎤 Audio enviado, transcribiendo...', 'user');
 
-            // Audio sigue usando subscribe (no streaming)
             const typingBubble = createTypingBubble();
             this.ia.sendAudio(audioBlob).subscribe({
               next: (res) => {
                 typingBubble.remove();
+
+                // Actualizar texto del mensaje de audio
                 const lastUserRow = chatMessages.querySelectorAll('.user-row');
                 const lastRow = lastUserRow[lastUserRow.length - 1];
                 if (lastRow) {
                   const p = lastRow.querySelector('.msg-text');
                   if (p) p.textContent = `🎤 "${res.transcription}"`;
                 }
+
+                // ── Detectar confirmación en la transcripción ──────────────
+                const confirmKeywords = ['confirmo', 'confirmar', 'sí confirmo', 'si confirmo'];
+                const isConfirm = confirmKeywords.some(k =>
+                  res.transcription.toLowerCase().includes(k)
+                );
+
+                if (isConfirm) {
+                  const botBubbles = chatMessages.querySelectorAll('.bot-bubble .msg-text');
+                  const lastBotText = botBubbles[botBubbles.length - 1]?.textContent || '';
+
+                  const confirmData = new FormData();
+                  confirmData.append('last_response', lastBotText);
+                  confirmData.append('session_id', this.ia.getSessionId());
+
+                  fetch('https://gabrielbackend-788289092522.us-central1.run.app/chat/confirm', {
+                    method: 'POST',
+                    body: confirmData
+                  });
+
+                  addMessage('✅ Pedido confirmado. ¡Gracias por tu compra! Puedes iniciar un nuevo pedido.', 'bot');
+                  return;
+                }
+                // ──────────────────────────────────────────────────────────
+
                 addMessage(res.response, 'bot');
               },
               error: (err) => {
@@ -243,6 +269,7 @@ export class ChatAsistente implements AfterViewInit {
             microBtn.title = 'Grabar audio';
             isRecording = false;
           };
+
 
           mediaRecorder.start();
           isRecording = true;
@@ -282,7 +309,7 @@ export class ChatAsistente implements AfterViewInit {
           body: confirmData
         });
 
-        addMessage('✅ Pedido confirmado. ¡Gracias por tu compra! Puedes iniciar un nuevo pedido.', 'bot');
+        addMessage('Pedido confirmado. ¡Gracias por tu compra! Puedes iniciar un nuevo pedido.', 'bot');
         return;  // ← sale sin pasar al streaming
       }
 
