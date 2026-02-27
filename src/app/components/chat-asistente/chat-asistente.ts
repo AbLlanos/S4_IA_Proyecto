@@ -264,6 +264,31 @@ export class ChatAsistente implements AfterViewInit {
       const text = inputTextarea.value.trim();
       if (!text && !attachedFile) return;
 
+      // ── Detectar confirmación ─────────────────────────────────────
+      const confirmKeywords = ['confirmo', 'confirmar', 'sí confirmo', 'si confirmo'];
+      if (confirmKeywords.some(k => text.toLowerCase().includes(k))) {
+        const botBubbles = chatMessages.querySelectorAll('.bot-bubble .msg-text');
+        const lastBotText = botBubbles[botBubbles.length - 1]?.textContent || '';
+
+        const confirmData = new FormData();
+        confirmData.append('last_response', lastBotText);
+        confirmData.append('session_id', this.ia.getSessionId());
+
+        addMessage(text, 'user');
+        inputTextarea.value = '';
+
+        await fetch('https://gabrielbackend-788289092522.us-central1.run.app/chat/confirm', {
+          method: 'POST',
+          body: confirmData
+        });
+
+        addMessage('✅ Pedido confirmado. ¡Gracias por tu compra! Puedes iniciar un nuevo pedido.', 'bot');
+        return;  // ← sale sin pasar al streaming
+      }
+
+
+
+
       if (attachedFile) {
         // Imagen: sigue usando subscribe (respuesta completa)
         const fileCopy = attachedFile;
